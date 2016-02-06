@@ -25,7 +25,7 @@ import scrapy
 """
 
 
-class OxygendemoItem(scrapy.Item):
+class OxygenItem(scrapy.Item):
     name = scrapy.Field()
     description = scrapy.Field()
     designer = scrapy.Field()
