@@ -1,9 +1,10 @@
 import random
-from oxygendemo.items import OxygenItem
 import scrapy
 from pyquery import PyQuery
 
-from oxygendemo.constants import RANDOM_CATEGORY_COUNT
+from oxygendemo.items import OxygenItem
+from oxygendemo.utils import convert_gpb_to_usd, convert_gpb_to_eur
+from oxygendemo.constants import RANDOM_CATEGORY_COUNT, IN_STOCK, OUT_OF_STOCK
 
 
 class OxygenSpider(scrapy.Spider):
@@ -38,6 +39,9 @@ class OxygenSpider(scrapy.Spider):
             "sale_discount": self.get_sale_discount(pq),
             "stock_status": self.get_stock_status(pq),
             "code": self.get_code(pq),
+            "gpb_price": self.get_gpb_price(pq),
+            "usd_price": self.get_usd_price(pq),
+            "eur_price": self.get_eur_price(pq),
             "link": response.request.url,
         }
 
@@ -64,16 +68,16 @@ class OxygenSpider(scrapy.Spider):
             return 0
 
         discount_price = pq(".price .mark").next().text()
-        return float(discount_price)/float(undiscounted_price) * 100
+        return float(discount_price) / float(undiscounted_price) * 100
 
     def get_stock_status(self, pq):
         stock_status = {}
         for item in pq("table select option:not(:first-child)").items():
             if item.attr("disabled"):
                 size = item.text().replace(" - Sold Out", "")
-                stock_status[size] = 3
+                stock_status[size] = OUT_OF_STOCK
             else:
-                stock_status[item.text()] = 1
+                stock_status[item.text()] = IN_STOCK
 
         return stock_status
 
@@ -82,3 +86,13 @@ class OxygenSpider(scrapy.Spider):
         code = name.lower().replace(" ", "-")
         return code
 
+    def get_gpb_price(self, pq):
+        return pq(".price").text()
+
+    def get_usd_price(self, pq):
+        gpb_price = self.get_gpb_price(pq)
+        return convert_gpb_to_usd(gpb_price)
+
+    def get_eur_price(self, pq):
+        gpb_price = self.get_gpb_price(pq)
+        return convert_gpb_to_eur(gpb_price)
