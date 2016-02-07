@@ -1,4 +1,4 @@
-RANDOM_CATEGORY_COUNT = 1
+RANDOM_CATEGORY_COUNT = 2
 
 TYPE_GUESS_KEYWORDS_MAP = {
     "A": ["apparel", "clothing", "dress"],

@@ -3,8 +3,8 @@ import scrapy
 from pyquery import PyQuery
 
 from oxygendemo.items import OxygenItem
-from oxygendemo.utils import convert_gpb_to_usd, convert_gpb_to_eur
-from oxygendemo.constants import RANDOM_CATEGORY_COUNT, IN_STOCK, OUT_OF_STOCK
+from oxygendemo.utils import convert_gpb_to_usd, convert_gpb_to_eur, find_best_matches_key, clean_price
+from oxygendemo.constants import RANDOM_CATEGORY_COUNT, IN_STOCK, OUT_OF_STOCK, TYPE_GUESS_KEYWORDS_MAP
 
 
 class OxygenSpider(scrapy.Spider):
@@ -25,7 +25,6 @@ class OxygenSpider(scrapy.Spider):
     def parse_category(self, response):
         pq = PyQuery(response.body)
         item_href_list = [c.attr("href") for c in pq(".itm a").items()]
-
         for href in item_href_list[:3]:
             yield scrapy.Request(url=self.get_absolute_url(href), callback=self.parse_item)
 
@@ -42,10 +41,12 @@ class OxygenSpider(scrapy.Spider):
             "gpb_price": self.get_gpb_price(pq),
             "usd_price": self.get_usd_price(pq),
             "eur_price": self.get_eur_price(pq),
+            "type": self.get_best_match_type(pq),
+            "gender": self.get_best_match_gender(pq),
+            "raw_color": self.get_best_match_color(pq),
             "link": response.request.url,
         }
-
-        yield item_data
+        return OxygenItem(**item_data)
 
     def get_absolute_url(self, href):
         return '{0}{1}'.format(self.base_url, href)
@@ -87,7 +88,9 @@ class OxygenSpider(scrapy.Spider):
         return code
 
     def get_gpb_price(self, pq):
-        return pq(".price").text()
+        pq(".price .mark").remove()
+        price = pq(".price").text()
+        return clean_price(price)
 
     def get_usd_price(self, pq):
         gpb_price = self.get_gpb_price(pq)
@@ -96,3 +99,18 @@ class OxygenSpider(scrapy.Spider):
     def get_eur_price(self, pq):
         gpb_price = self.get_gpb_price(pq)
         return convert_gpb_to_eur(gpb_price)
+
+    def get_best_match_type(self, pq):
+        name = self.get_name(pq)
+        description = self.get_description(pq)
+        designer = self.get_designer(pq)
+        item_info = name.lower() + description.lower() + designer.lower()
+
+        key_bundle = find_best_matches_key(info=item_info, key_map=TYPE_GUESS_KEYWORDS_MAP)
+        return key_bundle.get("name")
+
+    def get_best_match_gender(self, pq):
+        pass
+
+    def get_best_match_color(self, pq):
+        pass
