@@ -12,9 +12,6 @@ class OxygenSpider(scrapy.Spider):
 
     start_urls = ["http://www.oxygenboutique.com"]
 
-    def get_absolute_url(self, href):
-        return '{0}{1}'.format(self.base_url, href)
-
     def parse(self, response):
         pq = PyQuery(response.body)
 
@@ -37,9 +34,17 @@ class OxygenSpider(scrapy.Spider):
             "name": self.get_name(pq),
             "description": self.get_description(pq),
             "designer": self.get_designer(pq),
+            "images": self.get_image_urls(pq),
+            "sale_discount": self.get_sale_discount(pq),
+            "stock_status": self.get_stock_status(pq),
+            "code": self.get_code(pq),
+            "link": response.request.url,
         }
-        
+
         yield item_data
+
+    def get_absolute_url(self, href):
+        return '{0}{1}'.format(self.base_url, href)
 
     def get_name(self, pq):
         return pq(".right h2").text()
@@ -49,4 +54,31 @@ class OxygenSpider(scrapy.Spider):
 
     def get_designer(self, pq):
         return pq("#accordion h3:contains('Designer')").next().text()
+
+    def get_image_urls(self, pq):
+        return [self.get_absolute_url(m.attr("href")) for m in pq(".cloud-zoom-gallery").items()]
+
+    def get_sale_discount(self, pq):
+        undiscounted_price = pq(".offsetMark").text()
+        if not undiscounted_price:
+            return 0
+
+        discount_price = pq(".price .mark").next().text()
+        return float(discount_price)/float(undiscounted_price) * 100
+
+    def get_stock_status(self, pq):
+        stock_status = {}
+        for item in pq("table select option:not(:first-child)").items():
+            if item.attr("disabled"):
+                size = item.text().replace(" - Sold Out", "")
+                stock_status[size] = 3
+            else:
+                stock_status[item.text()] = 1
+
+        return stock_status
+
+    def get_code(self, pq):
+        name = self.get_name(pq)
+        code = name.lower().replace(" ", "-")
+        return code
 
