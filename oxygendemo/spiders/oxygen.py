@@ -1,10 +1,13 @@
 import random
+import string
+
 import scrapy
 from pyquery import PyQuery
 
 from oxygendemo.items import OxygenItem
-from oxygendemo.utils import convert_gpb_to_usd, convert_gpb_to_eur, find_best_matches_key, clean_price
-from oxygendemo.constants import RANDOM_CATEGORY_COUNT, IN_STOCK, OUT_OF_STOCK, TYPE_GUESS_KEYWORDS_MAP
+from oxygendemo.utils import convert_gpb_to_usd, convert_gpb_to_eur, find_best_match, clean_price
+from oxygendemo.constants import RANDOM_CATEGORY_COUNT, IN_STOCK, OUT_OF_STOCK, TYPE_GUESS_KEYWORDS_MAP, \
+    GENDER_GUESS_KEYWORDS_MAP, COLORS
 
 
 class OxygenSpider(scrapy.Spider):
@@ -20,15 +23,15 @@ class OxygenSpider(scrapy.Spider):
         random_category_href_list = random.sample(set(category_href_list), RANDOM_CATEGORY_COUNT)
 
         for href in random_category_href_list:
-            yield scrapy.Request(url=self.get_absolute_url(href), callback=self.parse_category)
+            yield scrapy.Request(url=self.get_absolute_url(href), callback=self.parse_category_page)
 
-    def parse_category(self, response):
+    def parse_category_page(self, response):
         pq = PyQuery(response.body)
-        item_href_list = [c.attr("href") for c in pq(".itm a").items()]
-        for href in item_href_list[:3]:
-            yield scrapy.Request(url=self.get_absolute_url(href), callback=self.parse_item)
+        item_href_list = [c.attr("href") for c in pq(".itm table a").items()]
+        for href in item_href_list:
+            yield scrapy.Request(url=self.get_absolute_url(href), callback=self.parse_item_page)
 
-    def parse_item(self, response):
+    def parse_item_page(self, response):
         pq = PyQuery(response.body)
         item_data = {
             "name": self.get_name(pq),
@@ -46,7 +49,7 @@ class OxygenSpider(scrapy.Spider):
             "raw_color": self.get_best_match_color(pq),
             "link": response.request.url,
         }
-        return OxygenItem(**item_data)
+        yield OxygenItem(**item_data)
 
     def get_absolute_url(self, href):
         return '{0}{1}'.format(self.base_url, href)
@@ -69,7 +72,8 @@ class OxygenSpider(scrapy.Spider):
             return 0
 
         discount_price = pq(".price .mark").next().text()
-        return float(discount_price) / float(undiscounted_price) * 100
+        sale_discount = float(discount_price) / float(undiscounted_price) * 100
+        return round(sale_discount, 2)
 
     def get_stock_status(self, pq):
         stock_status = {}
@@ -89,8 +93,9 @@ class OxygenSpider(scrapy.Spider):
 
     def get_gpb_price(self, pq):
         pq(".price .mark").remove()
-        price = pq(".price").text()
-        return clean_price(price)
+        price_str = pq(".price").text()
+        price_float = clean_price(price_str)
+        return "{0:.2f}".format(price_float)
 
     def get_usd_price(self, pq):
         gpb_price = self.get_gpb_price(pq)
@@ -100,17 +105,38 @@ class OxygenSpider(scrapy.Spider):
         gpb_price = self.get_gpb_price(pq)
         return convert_gpb_to_eur(gpb_price)
 
-    def get_best_match_type(self, pq):
+    def get_info_words(self, pq):
         name = self.get_name(pq)
         description = self.get_description(pq)
         designer = self.get_designer(pq)
-        item_info = name.lower() + description.lower() + designer.lower()
+        item_info = name.lower() + " " + description.lower() + " " + designer.lower()
+        item_words = [word.strip(string.punctuation) for word in item_info.split()]
+        return item_words
 
-        key_bundle = find_best_matches_key(info=item_info, key_map=TYPE_GUESS_KEYWORDS_MAP)
+    def get_best_match_type(self, pq):
+        info_words = self.get_info_words(pq)
+        key_bundle = find_best_match(info_words=info_words, key_map=TYPE_GUESS_KEYWORDS_MAP)
         return key_bundle.get("name")
 
     def get_best_match_gender(self, pq):
-        pass
+        info_words = self.get_info_words(pq)
+        key_bundle = find_best_match(info_words=info_words, key_map=GENDER_GUESS_KEYWORDS_MAP)
+        return key_bundle.get("name")
 
     def get_best_match_color(self, pq):
-        pass
+        info_words = self.get_info_words(pq)
+
+        match_colors = []
+        for c in COLORS:
+            match_count = info_words.count(c)
+            if match_count > 0:
+                d = {
+                    "name": c,
+                    "count": info_words.count(c)
+                }
+                match_colors.append(d)
+        if match_colors:
+            match_colors = sorted(match_colors, key=lambda k: k['count'], reverse=True)
+            best_match_color = match_colors[0]
+            return best_match_color.get("name")
+        return None

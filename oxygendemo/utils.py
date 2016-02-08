@@ -24,14 +24,14 @@ def convert_gpb_to_eur(gpb_price):
     return "{0:.2f}".format(eur_price)
 
 
-def find_best_matches_key(info, key_map):
+def find_best_match(info_words, key_map):
     """
-    :param info <str>:
+    :param info <list>:
     :param key_map <dict>:
     """
     matches = []
     for key, values in key_map.items():
-        match_count = sum([info.count(m) for m in values])
+        match_count = sum([info_words.count(m) for m in values])
         d = {
             "name": key,
             "count": match_count
@@ -40,4 +40,3 @@ def find_best_matches_key(info, key_map):
 
     matches = sorted(matches, key=lambda k: k['count'], reverse=True)
     return matches[0]
-

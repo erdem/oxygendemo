@@ -1,4 +1,10 @@
-RANDOM_CATEGORY_COUNT = 2
+RANDOM_CATEGORY_COUNT = 3
+
+OUT_OF_STOCK = 3
+IN_STOCK = 1
+
+GPB_TO_USD_RATE = 0.7
+GPB_TO_EUR_RATE = 0.8
 
 TYPE_GUESS_KEYWORDS_MAP = {
     "A": ["apparel", "clothing", "dress"],
@@ -8,8 +14,10 @@ TYPE_GUESS_KEYWORDS_MAP = {
     "R": ["accessories", "gold", "ring"],
 }
 
-OUT_OF_STOCK = 3
-IN_STOCK = 1
+GENDER_GUESS_KEYWORDS_MAP = {
+    "F": ["female", "woman", "women", "skirts"],
+    "M": ["man", "men", "male"],
+}
 
-GPB_TO_USD_RATE = 0.7
-GPB_TO_EUR_RATE = 0.8
+COLORS = ("red", "blue", "green", "yellow", "white", "pink", "orange")
+
