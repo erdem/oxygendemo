@@ -1,11 +1,12 @@
 import random
 import string
+from decimal import Decimal
 
 import scrapy
 from pyquery import PyQuery
 
 from oxygendemo.items import OxygenItem
-from oxygendemo.utils import convert_gpb_to_usd, convert_gpb_to_eur, find_best_match, clean_price
+from oxygendemo.utils import find_best_match, clean_price, get_exchange_rates
 from oxygendemo.constants import RANDOM_CATEGORY_COUNT, IN_STOCK, OUT_OF_STOCK, TYPE_GUESS_KEYWORDS_MAP, \
     GENDER_GUESS_KEYWORDS_MAP, COLORS
 
@@ -13,8 +14,9 @@ from oxygendemo.constants import RANDOM_CATEGORY_COUNT, IN_STOCK, OUT_OF_STOCK, 
 class OxygenSpider(scrapy.Spider):
     name = "oxygenboutique.com"
     base_url = "http://www.oxygenboutique.com/"
-
     start_urls = ["http://www.oxygenboutique.com"]
+
+    exchange_rates = get_exchange_rates()
 
     def parse(self, response):
         pq = PyQuery(response.body)
@@ -28,6 +30,7 @@ class OxygenSpider(scrapy.Spider):
     def parse_category_page(self, response):
         pq = PyQuery(response.body)
         item_href_list = [c.attr("href") for c in pq(".itm table a").items()]
+        print item_href_list
         for href in item_href_list:
             yield scrapy.Request(url=self.get_absolute_url(href), callback=self.parse_item_page)
 
@@ -94,16 +97,20 @@ class OxygenSpider(scrapy.Spider):
     def get_gpb_price(self, pq):
         pq(".price .mark").remove()
         price_str = pq(".price").text()
-        price_float = clean_price(price_str)
-        return "{0:.2f}".format(price_float)
+        price_decimal = clean_price(price_str)
+        return round(price_decimal, 2)
 
     def get_usd_price(self, pq):
-        gpb_price = self.get_gpb_price(pq)
-        return convert_gpb_to_usd(gpb_price)
+        gpb_price = Decimal(self.get_gpb_price(pq))
+        usd_ex_rate = Decimal(self.exchange_rates.get("USD"))
+        usd_price = gpb_price * usd_ex_rate
+        return round(usd_price, 2)
 
     def get_eur_price(self, pq):
-        gpb_price = self.get_gpb_price(pq)
-        return convert_gpb_to_eur(gpb_price)
+        gpb_price = Decimal(self.get_gpb_price(pq))
+        eur_ex_rate = Decimal(self.exchange_rates.get("EUR"))
+        eur_price = gpb_price * eur_ex_rate
+        return round(eur_price, 2)
 
     def get_info_words(self, pq):
         name = self.get_name(pq)

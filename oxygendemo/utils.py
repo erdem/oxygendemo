@@ -1,27 +1,26 @@
+import json
 import re
+import urllib2
+from urllib import urlencode
+from decimal import Decimal
 
-from oxygendemo.constants import GPB_TO_USD_RATE, GPB_TO_EUR_RATE
+from oxygendemo.constants import EXCHANGE_RATE_API_URL
 
 
 def clean_price(price_str):
-    price = re.sub(r'[^0-9.]+', '', unicode(price_str))
-    return float(price)
+    price = re.sub(r'[^0-9.]+', '', price_str)
+    return Decimal(price)
 
 
-def convert_gpb_to_usd(gpb_price):
-    if not isinstance(gpb_price, float):
-        gpb_price = clean_price(gpb_price)
+def get_exchange_rates(currency="GBP"):
+    api_params = urlencode({"base": currency})
+    api_url = '{0}?{1}'.format(EXCHANGE_RATE_API_URL, api_params)
 
-    usd_price = gpb_price * GPB_TO_USD_RATE
-    return "{0:.2f}".format(usd_price)
-
-
-def convert_gpb_to_eur(gpb_price):
-    if not isinstance(gpb_price, float):
-        gpb_price = clean_price(gpb_price)
-
-    eur_price = gpb_price * GPB_TO_USD_RATE
-    return "{0:.2f}".format(eur_price)
+    try:
+        response = urllib2.urlopen(api_url)
+        return json.loads(response.read())['rates']
+    except (KeyError, urllib2.HTTPError):
+        raise Exception("Could not found exhange rates")
 
 
 def find_best_match(info_words, key_map):

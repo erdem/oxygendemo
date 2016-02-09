@@ -3,8 +3,7 @@ RANDOM_CATEGORY_COUNT = 3
 OUT_OF_STOCK = 3
 IN_STOCK = 1
 
-GPB_TO_USD_RATE = 0.7
-GPB_TO_EUR_RATE = 0.8
+EXCHANGE_RATE_API_URL = "http://api.fixer.io/latest"
 
 TYPE_GUESS_KEYWORDS_MAP = {
     "A": ["apparel", "clothing", "dress"],
