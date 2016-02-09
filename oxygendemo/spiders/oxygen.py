@@ -1,4 +1,5 @@
 import random
+import re
 import string
 from decimal import Decimal
 
@@ -91,8 +92,7 @@ class OxygenSpider(scrapy.Spider):
 
     def get_code(self, pq):
         name = self.get_name(pq)
-        code = name.lower().replace(" ", "-")
-        return code
+        return re.sub(r'\W+', '-', name.lower())
 
     def get_gpb_price(self, pq):
         pq(".price .mark").remove()

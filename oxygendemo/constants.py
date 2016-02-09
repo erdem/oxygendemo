@@ -6,17 +6,17 @@ IN_STOCK = 1
 EXCHANGE_RATE_API_URL = "http://api.fixer.io/latest"
 
 TYPE_GUESS_KEYWORDS_MAP = {
-    "A": ["apparel", "clothing", "dress"],
-    "S": ["shoes", "sandals"],
-    "B": ["bags", "bag"],
-    "J": ["jewelry", "gold", "ring"],
-    "R": ["accessories", "gold", "ring"],
+    "A": ["apparel", "clothing", "dress", "bikini" "pants", "sweat"],
+    "S": ["shoes", "sandals", "boot", "sneaker"],
+    "B": ["bags", "purse"],
+    "J": ["jewelry", "gold", "ring", "bracelet", "crystal"],
+    "R": ["accessories", "hats", "homewear" "cases"],
 }
 
 GENDER_GUESS_KEYWORDS_MAP = {
     "F": ["female", "woman", "women", "skirts"],
-    "M": ["man", "men", "male"],
+    "M": ["man", "men", "male", "tie"],
 }
 
-COLORS = ("red", "blue", "green", "yellow", "white", "pink", "orange")
+COLORS = ("red", "blue", "green", "yellow", "white", "pink", "orange", "purple")
 
