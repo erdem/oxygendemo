@@ -1,7 +1,7 @@
 Simple Spider Task
 ==================
 
-Example web crawler for Scrapy.
+An example web crawler project for Scrapy.
 
 Requirments
 --------------
