@@ -1,5 +1,3 @@
-RANDOM_CATEGORY_COUNT = 3
-
 OUT_OF_STOCK = 3
 IN_STOCK = 1
 
@@ -17,6 +15,8 @@ GENDER_GUESS_KEYWORDS_MAP = {
     "F": ["female", "woman", "women", "skirts"],
     "M": ["man", "men", "male", "tie"],
 }
+
+GENDER_FEMALE = "F"
 
 COLORS = ("red", "blue", "green", "yellow", "white", "pink", "orange", "purple")
 

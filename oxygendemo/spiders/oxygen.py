@@ -1,4 +1,3 @@
-import random
 import re
 import string
 from decimal import Decimal
@@ -8,11 +7,14 @@ from pyquery import PyQuery
 
 from oxygendemo.items import OxygenItem
 from oxygendemo.utils import find_best_match, clean_price, get_exchange_rates
-from oxygendemo.constants import RANDOM_CATEGORY_COUNT, IN_STOCK, OUT_OF_STOCK, TYPE_GUESS_KEYWORDS_MAP, \
-    GENDER_GUESS_KEYWORDS_MAP, COLORS
+from oxygendemo.constants import IN_STOCK, OUT_OF_STOCK, TYPE_GUESS_KEYWORDS_MAP, \
+    GENDER_GUESS_KEYWORDS_MAP, COLORS, GENDER_FEMALE
 
 
 class OxygenSpider(scrapy.Spider):
+    """
+        Spider class implemention for oxygenboutique.com
+    """
     name = "oxygenboutique.com"
     base_url = "http://www.oxygenboutique.com/"
     start_urls = ["http://www.oxygenboutique.com"]
@@ -23,15 +25,13 @@ class OxygenSpider(scrapy.Spider):
         pq = PyQuery(response.body)
 
         category_href_list = [c.attr("href") for c in pq("ul.mega_box ul li a").items()]
-        random_category_href_list = random.sample(set(category_href_list), RANDOM_CATEGORY_COUNT)
 
-        for href in random_category_href_list:
+        for href in category_href_list:
             yield scrapy.Request(url=self.get_absolute_url(href), callback=self.parse_category_page)
 
     def parse_category_page(self, response):
         pq = PyQuery(response.body)
         item_href_list = [c.attr("href") for c in pq(".itm table a").items()]
-        print item_href_list
         for href in item_href_list:
             yield scrapy.Request(url=self.get_absolute_url(href), callback=self.parse_item_page)
 
@@ -40,7 +40,7 @@ class OxygenSpider(scrapy.Spider):
         item_data = {
             "name": self.get_name(pq),
             "description": self.get_description(pq),
-            "designer": self.get_designer(pq),
+            "designer": self.get_designer_info(pq),
             "images": self.get_image_urls(pq),
             "sale_discount": self.get_sale_discount(pq),
             "stock_status": self.get_stock_status(pq),
@@ -48,9 +48,9 @@ class OxygenSpider(scrapy.Spider):
             "gpb_price": self.get_gpb_price(pq),
             "usd_price": self.get_usd_price(pq),
             "eur_price": self.get_eur_price(pq),
+            "raw_color": self.get_best_match_color(pq),
             "type": self.get_best_match_type(pq),
             "gender": self.get_best_match_gender(pq),
-            "raw_color": self.get_best_match_color(pq),
             "link": response.request.url,
         }
         yield OxygenItem(**item_data)
@@ -64,7 +64,7 @@ class OxygenSpider(scrapy.Spider):
     def get_description(self, pq):
         return pq("#accordion h3:contains('Description')").next().text()
 
-    def get_designer(self, pq):
+    def get_designer_info(self, pq):
         return pq("#accordion h3:contains('Designer')").next().text()
 
     def get_image_urls(self, pq):
@@ -112,26 +112,22 @@ class OxygenSpider(scrapy.Spider):
         eur_price = gpb_price * eur_ex_rate
         return round(eur_price, 2)
 
-    def get_info_words(self, pq):
+    def get_info_word_list(self, pq):
+        """
+            Returns item info as a word list
+        """
         name = self.get_name(pq)
         description = self.get_description(pq)
-        designer = self.get_designer(pq)
-        item_info = name.lower() + " " + description.lower() + " " + designer.lower()
+        designer_info = self.get_designer_info(pq)
+        item_info = name.lower() + " " + description.lower() + " " + designer_info.lower()
         item_words = [word.strip(string.punctuation) for word in item_info.split()]
         return item_words
 
-    def get_best_match_type(self, pq):
-        info_words = self.get_info_words(pq)
-        key_bundle = find_best_match(info_words=info_words, key_map=TYPE_GUESS_KEYWORDS_MAP)
-        return key_bundle.get("name")
-
-    def get_best_match_gender(self, pq):
-        info_words = self.get_info_words(pq)
-        key_bundle = find_best_match(info_words=info_words, key_map=GENDER_GUESS_KEYWORDS_MAP)
-        return key_bundle.get("name")
-
     def get_best_match_color(self, pq):
-        info_words = self.get_info_words(pq)
+        """
+        Get description and check for color information in description
+        """
+        info_words = self.get_info_word_list(pq)
 
         match_colors = []
         for c in COLORS:
@@ -147,3 +143,17 @@ class OxygenSpider(scrapy.Spider):
             best_match_color = match_colors[0]
             return best_match_color.get("name")
         return None
+
+    def get_best_match_type(self, pq):
+        info_words = self.get_info_word_list(pq)
+        key_bundle = find_best_match(info_words=info_words, key_map=TYPE_GUESS_KEYWORDS_MAP)
+        return key_bundle.get("name")
+
+    def get_best_match_gender(self, pq):
+        info_words = self.get_info_word_list(pq)
+        key_bundle = find_best_match(info_words=info_words, key_map=GENDER_GUESS_KEYWORDS_MAP)
+
+        # if it does not match any word return female
+        if not key_bundle.get("match_count") > 0:
+            return GENDER_FEMALE
+        return key_bundle.get("name")
